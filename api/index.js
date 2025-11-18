@@ -25,7 +25,8 @@ const app = express();
 // CORS - CONFIGURAÇÃO CORRIGIDA PARA GITHUB PAGES
 // ============================================
 const allowedOrigins = [
-  'https://abraaosantosdeveloper.github.io',  // Substitua pelo seu domínio do GitHub Pages
+  'https://abraaosantosdeveloper.github.io/*',
+  'https://abraaosantosdeveloper.github.io/oasis_app/*',  // Substitua pelo seu domínio do GitHub Pages
   'http://localhost:5500',            // Para desenvolvimento local
   'http://localhost:3000',
   'http://127.0.0.1:5500'

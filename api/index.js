@@ -1,5 +1,5 @@
 // ============================================
-// OASIS API - Entry Point
+// OASIS API - Entry Point (CORS CORRIGIDO)
 // Compatível com Vercel Serverless Functions
 // ============================================
 
@@ -21,12 +21,52 @@ const journalRoutes = require('./routes/journal');
 // ============================================
 const app = express();
 
-// Middlewares
+// ============================================
+// CORS - CONFIGURAÇÃO CORRIGIDA PARA GITHUB PAGES
+// ============================================
+const allowedOrigins = [
+  'https://seu-usuario.github.io',  // Substitua pelo seu domínio do GitHub Pages
+  'http://localhost:5500',            // Para desenvolvimento local
+  'http://localhost:3000',
+  'http://127.0.0.1:5500'
+];
+
 app.use(cors({
-  origin: '*', // Em produção, especifique domínios permitidos
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: function(origin, callback) {
+    // Permite requisições sem origin (mobile apps, Postman, etc)
+    if (!origin) return callback(null, true);
+    
+    // Permite se o origin estiver na lista
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('❌ CORS bloqueado para origem:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-Request-Id']
 }));
+
+// Middleware para adicionar headers CORS manualmente (fallback)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || !origin) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+  
+  // Responde OPTIONS requests imediatamente
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -34,7 +74,7 @@ app.use(express.urlencoded({ extended: true }));
 // Log de requisições (desenvolvimento)
 if (process.env.NODE_ENV !== 'production') {
   app.use((req, res, next) => {
-    console.log(`${req.method} ${req.path}`);
+    console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin || 'No origin'}`);
     next();
   });
 }
@@ -47,6 +87,7 @@ app.get('/', (req, res) => {
     success: true,
     message: '🌴 OASIS API is running',
     version: '1.0.0',
+    cors: 'enabled',
     endpoints: {
       auth: '/api/login, /api/signup, /api/users/:id',
       habits: '/api/habits',
@@ -60,7 +101,8 @@ app.get('/api', (req, res) => {
   res.json({
     success: true,
     message: '🌴 OASIS API',
-    version: '1.0.0'
+    version: '1.0.0',
+    cors: 'enabled'
   });
 });
 
@@ -87,6 +129,15 @@ app.use((req, res) => {
 // ============================================
 app.use((err, req, res, next) => {
   console.error('❌ Erro não tratado:', err);
+  
+  // Erro de CORS
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      success: false,
+      error: 'CORS: Origem não autorizada'
+    });
+  }
+  
   res.status(500).json({
     success: false,
     error: 'Erro interno do servidor'
@@ -106,6 +157,7 @@ if (process.env.NODE_ENV !== 'production') {
         console.log(`🚀 Servidor rodando na porta ${PORT}`);
         console.log(`🌐 http://localhost:${PORT}`);
         console.log(`📚 API Docs: http://localhost:${PORT}`);
+        console.log(`✅ CORS configurado para:`, allowedOrigins);
       });
     } else {
       console.error('❌ Não foi possível conectar ao banco de dados');

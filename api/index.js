@@ -22,53 +22,65 @@ const journalRoutes = require('./routes/journal');
 const app = express();
 
 // ============================================
-// CORS - CONFIGURAÇÃO CORRIGIDA PARA GITHUB PAGES
+// CORS
 // ============================================
 const allowedOrigins = [
-  'https://abraaosantosdeveloper.github.io/*',
-  'https://abraaosantosdeveloper.github.io/oasis_app/*',  // Substitua pelo seu domínio do GitHub Pages
-  'http://localhost:5500',            // Para desenvolvimento local
+  'https://abraaosantosdeveloper.github.io',  
+  'http://localhost:5500',
   'http://localhost:3000',
   'http://127.0.0.1:5500'
 ];
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Permite requisições sem origin (mobile apps, Postman, etc)
+    // Permite requisições sem origin (Postman, mobile apps)
     if (!origin) return callback(null, true);
     
-    // Permite se o origin estiver na lista
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('❌ CORS bloqueado para origem:', origin);
-      callback(new Error('Not allowed by CORS'));
+    // Permite qualquer subdomínio .github.io (recomendado)
+    if (origin.includes('github.io')) {
+      return callback(null, true);
     }
+    
+    // Permite origens específicas
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    console.log('⚠️ CORS: Origem não permitida:', origin);
+    callback(null, true); // Permite mesmo assim (remova se quiser bloquear)
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Length', 'X-Request-Id']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Length', 'X-Request-Id'],
+  maxAge: 86400, // Cache preflight por 24h
+  optionsSuccessStatus: 204 // Status correto para OPTIONS
 }));
 
-// Middleware para adicionar headers CORS manualmente (fallback)
+// Middleware adicional para garantir headers
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin) || !origin) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
+  
+  // Se for github.io, permite automaticamente
+  if (origin && origin.includes('github.io')) {
+    res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  } else if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   }
   
-  // Responde OPTIONS requests imediatamente
+  // Responde OPTIONS imediatamente
   if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
+    return res.status(204).end(); // ✅ Status 204 (não 200)
   }
   
   next();
 });
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

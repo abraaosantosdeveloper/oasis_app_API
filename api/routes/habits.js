@@ -26,74 +26,91 @@ const {
 // Função auxiliar: Calcular próxima data baseada na data de criação
 // ============================================
 function calcularProximaData(tipoRepeticao, dataCriacao = null) {
-  const hoje = startOfDay(new Date());
-  let proxima = hoje;
+  try {
+    const hoje = startOfDay(new Date());
+    let proxima = hoje;
 
-  // Se tem data de criação, usa ela como referência
-  if (dataCriacao) {
-    const criacao = startOfDay(parseISO(dataCriacao.split('T')[0]));
+    // Se tem data de criação, usa ela como referência
+    if (dataCriacao) {
+      // Parse da data de criação (pode vir como YYYY-MM-DD ou ISO completo)
+      let dataStr = dataCriacao;
+      if (typeof dataCriacao === 'string' && dataCriacao.includes('T')) {
+        dataStr = dataCriacao.split('T')[0];
+      }
+      
+      const criacao = startOfDay(parseISO(dataStr));
+      console.log(`📅 Data de criação: ${dataStr}, Hoje: ${format(hoje, 'yyyy-MM-dd')}`);
+      
+      switch (tipoRepeticao) {
+        case 'diario':
+          // Para diários, sempre é o próximo dia
+          proxima = addDays(hoje, 1);
+          break;
+          
+        case 'semanal':
+          // Para semanais, encontra o próximo dia da semana igual ao da criação
+          const diaDaSemanaCriacao = getDay(criacao);
+          const diaAtual = getDay(hoje);
+          
+          let diasParaAdicionar = (diaDaSemanaCriacao - diaAtual + 7) % 7;
+          if (diasParaAdicionar === 0) diasParaAdicionar = 7; // Se é hoje, vai para próxima semana
+          
+          proxima = addDays(hoje, diasParaAdicionar);
+          console.log(`🔄 Semanal: dia da semana criação=${diaDaSemanaCriacao}, atual=${diaAtual}, dias a adicionar=${diasParaAdicionar}`);
+          break;
+          
+        case 'mensal':
+          // Para mensais, próxima ocorrência no mesmo dia do mês
+          const diaDoMesCriacao = getDate(criacao);
+          const diaAtualMes = getDate(hoje);
+          
+          // Se o dia ainda não passou este mês, usa o mês atual
+          // Senão, usa o próximo mês
+          let proximoMes = hoje;
+          if (diaAtualMes >= diaDoMesCriacao) {
+            proximoMes = addMonths(hoje, 1);
+          }
+          
+          // Tenta definir o dia do mês
+          try {
+            proxima = setDate(proximoMes, diaDoMesCriacao);
+          } catch (err) {
+            // Se o dia não existe no mês (ex: 31 de fevereiro), usa o último dia
+            proxima = endOfMonth(proximoMes);
+          }
+          
+          // Valida se o dia foi definido corretamente
+          if (getDate(proxima) !== diaDoMesCriacao) {
+            // Se não conseguiu, usa o último dia do mês
+            proxima = endOfMonth(proximoMes);
+          }
+          console.log(`📆 Mensal: dia criação=${diaDoMesCriacao}, dia atual=${diaAtualMes}`);
+          break;
+      }
+    } else {
+      // Sem data de criação, usa lógica simples
+      switch (tipoRepeticao) {
+        case 'diario':
+          proxima = addDays(hoje, 1);
+          break;
+        case 'semanal':
+          proxima = addWeeks(hoje, 1);
+          break;
+        case 'mensal':
+          proxima = addMonths(hoje, 1);
+          break;
+      }
+    }
+
+    const resultado = format(proxima, 'yyyy-MM-dd');
+    console.log(`✅ Data calculada: ${resultado}`);
+    return resultado;
     
-    switch (tipoRepeticao) {
-      case 'diario':
-        // Para diários, sempre é o próximo dia
-        proxima = addDays(hoje, 1);
-        break;
-        
-      case 'semanal':
-        // Para semanais, encontra o próximo dia da semana igual ao da criação
-        const diaDaSemanaCriacao = getDay(criacao);
-        const diaAtual = getDay(hoje);
-        
-        let diasParaAdicionar = (diaDaSemanaCriacao - diaAtual + 7) % 7;
-        if (diasParaAdicionar === 0) diasParaAdicionar = 7; // Se é hoje, vai para próxima semana
-        
-        proxima = addDays(hoje, diasParaAdicionar);
-        break;
-        
-      case 'mensal':
-        // Para mensais, próxima ocorrência no mesmo dia do mês
-        const diaDoMesCriacao = getDate(criacao);
-        const diaAtualMes = getDate(hoje);
-        
-        // Se o dia ainda não passou este mês, usa o mês atual
-        // Senão, usa o próximo mês
-        let proximoMes = hoje;
-        if (diaAtualMes >= diaDoMesCriacao) {
-          proximoMes = addMonths(hoje, 1);
-        }
-        
-        // Tenta definir o dia do mês
-        try {
-          proxima = setDate(proximoMes, diaDoMesCriacao);
-        } catch (err) {
-          // Se o dia não existe no mês (ex: 31 de fevereiro), usa o último dia
-          proxima = endOfMonth(proximoMes);
-        }
-        
-        // Valida se o dia foi definido corretamente
-        if (getDate(proxima) !== diaDoMesCriacao) {
-          // Se não conseguiu, usa o último dia do mês
-          proxima = endOfMonth(proximoMes);
-        }
-        break;
-    }
-  } else {
-    // Sem data de criação, usa lógica simples
-    switch (tipoRepeticao) {
-      case 'diario':
-        proxima = addDays(hoje, 1);
-        break;
-      case 'semanal':
-        proxima = addWeeks(hoje, 1);
-        break;
-      case 'mensal':
-        proxima = addMonths(hoje, 1);
-        break;
-    }
+  } catch (err) {
+    console.error('❌ Erro dentro de calcularProximaData:', err);
+    console.error('Stack:', err.stack);
+    throw err; // Re-throw para ser capturado no toggle
   }
-
-  // Retorna no formato YYYY-MM-DD
-  return format(proxima, 'yyyy-MM-dd');
 }
 
 // ============================================
@@ -154,28 +171,33 @@ router.post('/', validateHabit, async (req, res) => {
   try {
     const { titulo, descricao, categoria, repetir, tipo_repeticao, user_id } = req.body;
 
-    // Se repetir = true, calcula próxima data
-    let proximaData = null;
-    if (repetir && tipo_repeticao) {
-      proximaData = calcularProximaData(tipo_repeticao);
-    }
-
+    // Primeiro insere o hábito sem próxima_data
     const result = await db.query(
       `INSERT INTO habitos 
        (titulo, descricao, categoria, repetir, tipo_repeticao, completado, proxima_data, user_id) 
-       VALUES (?, ?, ?, ?, ?, FALSE, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, FALSE, NULL, ?)`,
       [
         titulo,
         descricao || null,
         categoria,
         repetir ? 1 : 0,
         repetir ? tipo_repeticao : null,
-        proximaData,
         user_id
       ]
     );
 
     const habitId = result.insertId;
+
+    // Se repetir = true, calcula e atualiza a próxima data usando a data de criação
+    if (repetir && tipo_repeticao) {
+      const habitCriado = await db.query('SELECT criado_em FROM habitos WHERE id = ?', [habitId]);
+      const proximaData = calcularProximaData(tipo_repeticao, habitCriado[0].criado_em);
+      
+      await db.query(
+        'UPDATE habitos SET proxima_data = ? WHERE id = ?',
+        [proximaData, habitId]
+      );
+    }
 
     // Busca o hábito criado com dados da categoria
     const newHabit = await db.query(

@@ -7,61 +7,73 @@ const router = express.Router();
 const db = require('../utils/db');
 const { success, error, serverError, notFoundError } = require('../utils/responses');
 const { validateHabit } = require('../middleware/validation');
+const { 
+  addDays, 
+  addWeeks, 
+  addMonths, 
+  startOfDay, 
+  getDay, 
+  getDate,
+  setDate,
+  endOfMonth,
+  format,
+  parseISO,
+  isAfter,
+  isSameDay
+} = require('date-fns');
 
 // ============================================
 // Função auxiliar: Calcular próxima data baseada na data de criação
 // ============================================
 function calcularProximaData(tipoRepeticao, dataCriacao = null) {
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-
-  let proxima = new Date(hoje);
+  const hoje = startOfDay(new Date());
+  let proxima = hoje;
 
   // Se tem data de criação, usa ela como referência
   if (dataCriacao) {
-    const criacao = new Date(dataCriacao.split('T')[0] + 'T00:00:00');
+    const criacao = startOfDay(parseISO(dataCriacao.split('T')[0]));
     
     switch (tipoRepeticao) {
       case 'diario':
         // Para diários, sempre é o próximo dia
-        proxima.setDate(proxima.getDate() + 1);
+        proxima = addDays(hoje, 1);
         break;
         
       case 'semanal':
         // Para semanais, encontra o próximo dia da semana igual ao da criação
-        const diaDaSemanaCriacao = criacao.getDay();
-        let diasParaAdicionar = (diaDaSemanaCriacao - proxima.getDay() + 7) % 7;
+        const diaDaSemanaCriacao = getDay(criacao);
+        const diaAtual = getDay(hoje);
+        
+        let diasParaAdicionar = (diaDaSemanaCriacao - diaAtual + 7) % 7;
         if (diasParaAdicionar === 0) diasParaAdicionar = 7; // Se é hoje, vai para próxima semana
-        proxima.setDate(proxima.getDate() + diasParaAdicionar);
+        
+        proxima = addDays(hoje, diasParaAdicionar);
         break;
         
       case 'mensal':
         // Para mensais, próxima ocorrência no mesmo dia do mês
-        const diaDoMes = criacao.getDate();
+        const diaDoMesCriacao = getDate(criacao);
+        const diaAtualMes = getDate(hoje);
         
-        // Começa tentando usar o mês atual
-        let anoProximo = hoje.getFullYear();
-        let mesProximo = hoje.getMonth();
-        
-        // Se o dia já passou neste mês, vai para o próximo mês
-        if (hoje.getDate() > diaDoMes) {
-          mesProximo++;
+        // Se o dia ainda não passou este mês, usa o mês atual
+        // Senão, usa o próximo mês
+        let proximoMes = hoje;
+        if (diaAtualMes >= diaDoMesCriacao) {
+          proximoMes = addMonths(hoje, 1);
         }
         
-        // Ajusta se passou de dezembro
-        if (mesProximo > 11) {
-          mesProximo = 0;
-          anoProximo++;
+        // Tenta definir o dia do mês
+        try {
+          proxima = setDate(proximoMes, diaDoMesCriacao);
+        } catch (err) {
+          // Se o dia não existe no mês (ex: 31 de fevereiro), usa o último dia
+          proxima = endOfMonth(proximoMes);
         }
         
-        // Tenta criar a data no dia específico
-        proxima = new Date(anoProximo, mesProximo, diaDoMes);
-        
-        // Se a data resultou em outro dia (ex: 31 em mês de 30 dias), 
-        // usa o último dia daquele mês
-        if (proxima.getDate() !== diaDoMes) {
-          // Último dia do mês = dia 0 do próximo mês
-          proxima = new Date(anoProximo, mesProximo + 1, 0);
+        // Valida se o dia foi definido corretamente
+        if (getDate(proxima) !== diaDoMesCriacao) {
+          // Se não conseguiu, usa o último dia do mês
+          proxima = endOfMonth(proximoMes);
         }
         break;
     }
@@ -69,19 +81,19 @@ function calcularProximaData(tipoRepeticao, dataCriacao = null) {
     // Sem data de criação, usa lógica simples
     switch (tipoRepeticao) {
       case 'diario':
-        proxima.setDate(proxima.getDate() + 1);
+        proxima = addDays(hoje, 1);
         break;
       case 'semanal':
-        proxima.setDate(proxima.getDate() + 7);
+        proxima = addWeeks(hoje, 1);
         break;
       case 'mensal':
-        proxima.setMonth(proxima.getMonth() + 1);
+        proxima = addMonths(hoje, 1);
         break;
     }
   }
 
   // Retorna no formato YYYY-MM-DD
-  return proxima.toISOString().split('T')[0];
+  return format(proxima, 'yyyy-MM-dd');
 }
 
 // ============================================

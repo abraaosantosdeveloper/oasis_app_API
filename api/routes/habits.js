@@ -32,14 +32,25 @@ function calcularProximaData(tipoRepeticao, dataCriacao = null) {
 
     // Se tem data de criação, usa ela como referência
     if (dataCriacao) {
-      // Parse da data de criação (pode vir como YYYY-MM-DD ou ISO completo)
-      let dataStr = dataCriacao;
-      if (typeof dataCriacao === 'string' && dataCriacao.includes('T')) {
-        dataStr = dataCriacao.split('T')[0];
+      console.log(`🔍 Tipo de dataCriacao:`, typeof dataCriacao, dataCriacao);
+      
+      // Parse da data de criação (pode vir como Date object, YYYY-MM-DD ou ISO completo)
+      let criacao;
+      if (dataCriacao instanceof Date) {
+        // Se já é um Date, usa direto
+        criacao = startOfDay(dataCriacao);
+      } else if (typeof dataCriacao === 'string') {
+        // Se é string, faz o parse
+        let dataStr = dataCriacao;
+        if (dataCriacao.includes('T')) {
+          dataStr = dataCriacao.split('T')[0];
+        }
+        criacao = startOfDay(parseISO(dataStr));
+      } else {
+        throw new Error('Formato de data inválido: ' + typeof dataCriacao);
       }
       
-      const criacao = startOfDay(parseISO(dataStr));
-      console.log(`📅 Data de criação: ${dataStr}, Hoje: ${format(hoje, 'yyyy-MM-dd')}`);
+      console.log(`📅 Data de criação: ${format(criacao, 'yyyy-MM-dd')}, Hoje: ${format(hoje, 'yyyy-MM-dd')}`);
       
       switch (tipoRepeticao) {
         case 'diario':

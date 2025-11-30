@@ -109,7 +109,8 @@ router.post('/login', validateLogin, async (req, res) => {
         email: user.email,
         data_nasc: user.data_nasc,
         idade: user.idade,
-        sexo: user.sexo
+        sexo: user.sexo,
+        foto_perfil: user.foto_perfil
       }
     });
 
@@ -170,6 +171,10 @@ router.put('/users/:id', async (req, res) => {
       updates.push('sexo = ?');
       values.push(sexo || null);
     }
+    if (req.body.foto_perfil !== undefined) {
+      updates.push('foto_perfil = ?');
+      values.push(req.body.foto_perfil || null);
+    }
     if (senha) {
       const senhaHash = await bcrypt.hash(senha, 10);
       updates.push('senha_hash = ?');
@@ -189,7 +194,7 @@ router.put('/users/:id', async (req, res) => {
 
     // Busca dados atualizados
     const updatedUser = await db.query(
-      'SELECT id, nome, email, data_nasc, idade, sexo FROM usuarios WHERE id = ?',
+      'SELECT id, nome, email, data_nasc, idade, sexo, foto_perfil FROM usuarios WHERE id = ?',
       [id]
     );
 

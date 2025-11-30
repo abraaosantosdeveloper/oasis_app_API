@@ -114,8 +114,8 @@ app.get('/', (req, res) => {
 app.get('/api', (req, res) => {
   res.json({
     success: true,
-    message: '🌴 OASIS API',
-    version: '1.0.0',
+    message: 'OASIS API',
+    version: '1.0.1',
     cors: 'enabled'
   });
 });

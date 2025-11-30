@@ -100,7 +100,7 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     message: 'OASIS API is running',
-    version: '1.0.1',
+    version: '1.0.2',
     cors: 'enabled',
     endpoints: {
       auth: '/api/login, /api/signup, /api/users/:id',
@@ -115,7 +115,7 @@ app.get('/api', (req, res) => {
   res.json({
     success: true,
     message: 'OASIS API',
-    version: '1.0.1',
+    version: '1.0.2',
     cors: 'enabled'
   });
 });

@@ -304,38 +304,56 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/toggle', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`🔄 Toggle chamado para hábito ID: ${id}`);
 
     // Busca hábito atual
     const habits = await db.query('SELECT * FROM habitos WHERE id = ?', [id]);
     
     if (habits.length === 0) {
+      console.log(`❌ Hábito ${id} não encontrado`);
       return notFoundError(res, 'Hábito não encontrado');
     }
 
     const habit = habits[0];
+    console.log(`📋 Hábito encontrado:`, {
+      id: habit.id,
+      titulo: habit.titulo,
+      completado: habit.completado,
+      repetir: habit.repetir,
+      tipo_repeticao: habit.tipo_repeticao,
+      criado_em: habit.criado_em
+    });
+    
     const novoStatus = !habit.completado;
+    console.log(`🔀 Mudando status de ${habit.completado} para ${novoStatus}`);
 
     let proximaData = habit.proxima_data;
 
     // Se está marcando como concluído e o hábito repete
     if (novoStatus && habit.repetir && habit.tipo_repeticao) {
+      console.log(`📅 Calculando próxima data...`);
       // Calcula próxima data baseada na data de criação
       try {
         proximaData = calcularProximaData(habit.tipo_repeticao, habit.criado_em);
         console.log(`✅ Próxima data calculada: ${proximaData} para hábito ${id}`);
       } catch (err) {
-        console.error('Erro ao calcular próxima data:', err);
-        return serverError(res, 'Erro ao calcular próxima data');
+        console.error('❌ Erro ao calcular próxima data:', err);
+        console.error('Stack:', err.stack);
+        return serverError(res, 'Erro ao calcular próxima data: ' + err.message);
       }
     }
 
     // Se está desmarcando, não altera a próxima data
     // (mantém a data agendada)
 
+    console.log(`💾 Executando UPDATE: completado=${novoStatus ? 1 : 0}, proxima_data=${proximaData}`);
+    
     await db.query(
       'UPDATE habitos SET completado = ?, proxima_data = ? WHERE id = ?',
       [novoStatus ? 1 : 0, proximaData, id]
     );
+
+    console.log(`✅ UPDATE executado com sucesso`);
 
     // Retorna hábito atualizado
     const updated = await db.query(
@@ -347,14 +365,17 @@ router.post('/:id/toggle', async (req, res) => {
     );
 
     if (updated.length === 0) {
+      console.log(`❌ Hábito ${id} não encontrado após UPDATE`);
       return notFoundError(res, 'Hábito não encontrado após atualização');
     }
 
+    console.log(`✅ Toggle concluído com sucesso para hábito ${id}`);
     return success(res, updated[0]);
 
   } catch (err) {
-    console.error('Erro ao alternar status:', err);
+    console.error('❌ ERRO GERAL no toggle:', err);
     console.error('Stack:', err.stack);
+    console.error('Mensagem:', err.message);
     return serverError(res, 'Erro ao alternar status: ' + err.message);
   }
 });

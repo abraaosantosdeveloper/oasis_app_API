@@ -13,21 +13,13 @@ const { success, serverError } = require('../utils/responses');
 router.get('/', async (req, res) => {
   try {
     // Faz uma query simples na tabela not_hibernate
-    // Esta tabela deve existir no banco apenas para este propósito
-    await db.query('SELECT * FROM not_hibernate LIMIT 1');
+    const result = await db.query('SELECT * FROM not_hibernate LIMIT 1');
     
-    return success(res, { 
-      message: 'Container ativo', 
-      timestamp: new Date().toISOString() 
-    });
+    return success(res, result[0] || { message: 'Tabela vazia' });
 
   } catch (err) {
     console.error('Erro no keep-alive:', err);
-    // Mesmo com erro, retorna sucesso para manter o ping funcionando
-    return success(res, { 
-      message: 'Container ativo (fallback)', 
-      timestamp: new Date().toISOString() 
-    });
+    return serverError(res, 'Erro ao consultar tabela');
   }
 });
 

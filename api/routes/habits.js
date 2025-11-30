@@ -291,7 +291,7 @@ router.post('/:id/toggle', async (req, res) => {
     // (mantém a data agendada)
 
     await db.query(
-      'UPDATE habitos SET completado = ?, proxima_data = ?, atualizado_em = NOW() WHERE id = ?',
+      'UPDATE habitos SET completado = ?, proxima_data = ? WHERE id = ?',
       [novoStatus ? 1 : 0, proximaData, id]
     );
 

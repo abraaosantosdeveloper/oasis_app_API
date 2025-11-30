@@ -9,24 +9,55 @@ const { success, error, serverError, notFoundError } = require('../utils/respons
 const { validateHabit } = require('../middleware/validation');
 
 // ============================================
-// Função auxiliar: Calcular próxima data
+// Função auxiliar: Calcular próxima data baseada na data de criação
 // ============================================
-function calcularProximaData(tipoRepeticao) {
+function calcularProximaData(tipoRepeticao, dataCriacao = null) {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
   let proxima = new Date(hoje);
 
-  switch (tipoRepeticao) {
-    case 'diario':
-      proxima.setDate(proxima.getDate() + 1);
-      break;
-    case 'semanal':
-      proxima.setDate(proxima.getDate() + 7);
-      break;
-    case 'mensal':
-      proxima.setMonth(proxima.getMonth() + 1);
-      break;
+  // Se tem data de criação, usa ela como referência
+  if (dataCriacao) {
+    const criacao = new Date(dataCriacao.split('T')[0] + 'T00:00:00');
+    
+    switch (tipoRepeticao) {
+      case 'diario':
+        // Para diários, sempre é o próximo dia
+        proxima.setDate(proxima.getDate() + 1);
+        break;
+        
+      case 'semanal':
+        // Para semanais, encontra o próximo dia da semana igual ao da criação
+        const diaDaSemanaCriacao = criacao.getDay();
+        let diasParaAdicionar = (diaDaSemanaCriacao - proxima.getDay() + 7) % 7;
+        if (diasParaAdicionar === 0) diasParaAdicionar = 7; // Se é hoje, vai para próxima semana
+        proxima.setDate(proxima.getDate() + diasParaAdicionar);
+        break;
+        
+      case 'mensal':
+        // Para mensais, próxima ocorrência no mesmo dia do mês
+        const diaDoMes = criacao.getDate();
+        proxima = new Date(hoje.getFullYear(), hoje.getMonth() + 1, diaDoMes);
+        // Se já passou o dia este mês, vai para o próximo mês
+        if (proxima <= hoje) {
+          proxima = new Date(hoje.getFullYear(), hoje.getMonth() + 2, diaDoMes);
+        }
+        break;
+    }
+  } else {
+    // Sem data de criação, usa lógica simples
+    switch (tipoRepeticao) {
+      case 'diario':
+        proxima.setDate(proxima.getDate() + 1);
+        break;
+      case 'semanal':
+        proxima.setDate(proxima.getDate() + 7);
+        break;
+      case 'mensal':
+        proxima.setMonth(proxima.getMonth() + 1);
+        break;
+    }
   }
 
   // Retorna no formato YYYY-MM-DD
@@ -234,15 +265,15 @@ router.post('/:id/toggle', async (req, res) => {
 
     // Se está marcando como concluído e o hábito repete
     if (novoStatus && habit.repetir && habit.tipo_repeticao) {
-      // Calcula próxima data
-      proximaData = calcularProximaData(habit.tipo_repeticao);
+      // Calcula próxima data baseada na data de criação
+      proximaData = calcularProximaData(habit.tipo_repeticao, habit.criado_em);
     }
 
     // Se está desmarcando, não altera a próxima data
     // (mantém a data agendada)
 
     await db.query(
-      'UPDATE habitos SET completado = ?, proxima_data = ? WHERE id = ?',
+      'UPDATE habitos SET completado = ?, proxima_data = ?, atualizado_em = NOW() WHERE id = ?',
       [novoStatus ? 1 : 0, proximaData, id]
     );
 

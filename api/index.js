@@ -99,8 +99,8 @@ if (process.env.NODE_ENV !== 'production') {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: '🌴 OASIS API is running',
-    version: '1.0.0',
+    message: 'OASIS API is running',
+    version: '1.0.1',
     cors: 'enabled',
     endpoints: {
       auth: '/api/login, /api/signup, /api/users/:id',

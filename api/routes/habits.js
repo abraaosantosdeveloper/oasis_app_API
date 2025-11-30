@@ -38,10 +38,28 @@ function calcularProximaData(tipoRepeticao, dataCriacao = null) {
       case 'mensal':
         // Para mensais, próxima ocorrência no mesmo dia do mês
         const diaDoMes = criacao.getDate();
-        proxima = new Date(hoje.getFullYear(), hoje.getMonth() + 1, diaDoMes);
-        // Se já passou o dia este mês, vai para o próximo mês
-        if (proxima <= hoje) {
-          proxima = new Date(hoje.getFullYear(), hoje.getMonth() + 2, diaDoMes);
+        
+        // Tenta criar data no próximo mês
+        let anoProximo = hoje.getFullYear();
+        let mesProximo = hoje.getMonth() + 1;
+        
+        // Se o dia já passou este mês, vai para o próximo
+        if (hoje.getDate() >= diaDoMes) {
+          mesProximo++;
+        }
+        
+        // Ajusta se passou de dezembro
+        if (mesProximo > 11) {
+          mesProximo = 0;
+          anoProximo++;
+        }
+        
+        // Cria a data e valida se o dia existe nesse mês
+        proxima = new Date(anoProximo, mesProximo, diaDoMes);
+        
+        // Se a data é inválida (ex: 31 de fevereiro), usa o último dia do mês
+        if (proxima.getDate() !== diaDoMes) {
+          proxima = new Date(anoProximo, mesProximo + 1, 0); // Último dia do mês
         }
         break;
     }

@@ -39,12 +39,12 @@ function calcularProximaData(tipoRepeticao, dataCriacao = null) {
         // Para mensais, próxima ocorrência no mesmo dia do mês
         const diaDoMes = criacao.getDate();
         
-        // Tenta criar data no próximo mês
+        // Começa tentando usar o mês atual
         let anoProximo = hoje.getFullYear();
-        let mesProximo = hoje.getMonth() + 1;
+        let mesProximo = hoje.getMonth();
         
-        // Se o dia já passou este mês, vai para o próximo
-        if (hoje.getDate() >= diaDoMes) {
+        // Se o dia já passou neste mês, vai para o próximo mês
+        if (hoje.getDate() > diaDoMes) {
           mesProximo++;
         }
         
@@ -54,12 +54,14 @@ function calcularProximaData(tipoRepeticao, dataCriacao = null) {
           anoProximo++;
         }
         
-        // Cria a data e valida se o dia existe nesse mês
+        // Tenta criar a data no dia específico
         proxima = new Date(anoProximo, mesProximo, diaDoMes);
         
-        // Se a data é inválida (ex: 31 de fevereiro), usa o último dia do mês
+        // Se a data resultou em outro dia (ex: 31 em mês de 30 dias), 
+        // usa o último dia daquele mês
         if (proxima.getDate() !== diaDoMes) {
-          proxima = new Date(anoProximo, mesProximo + 1, 0); // Último dia do mês
+          // Último dia do mês = dia 0 do próximo mês
+          proxima = new Date(anoProximo, mesProximo + 1, 0);
         }
         break;
     }
@@ -284,7 +286,13 @@ router.post('/:id/toggle', async (req, res) => {
     // Se está marcando como concluído e o hábito repete
     if (novoStatus && habit.repetir && habit.tipo_repeticao) {
       // Calcula próxima data baseada na data de criação
-      proximaData = calcularProximaData(habit.tipo_repeticao, habit.criado_em);
+      try {
+        proximaData = calcularProximaData(habit.tipo_repeticao, habit.criado_em);
+        console.log(`✅ Próxima data calculada: ${proximaData} para hábito ${id}`);
+      } catch (err) {
+        console.error('Erro ao calcular próxima data:', err);
+        return serverError(res, 'Erro ao calcular próxima data');
+      }
     }
 
     // Se está desmarcando, não altera a próxima data
@@ -304,11 +312,16 @@ router.post('/:id/toggle', async (req, res) => {
       [id]
     );
 
+    if (updated.length === 0) {
+      return notFoundError(res, 'Hábito não encontrado após atualização');
+    }
+
     return success(res, updated[0]);
 
   } catch (err) {
     console.error('Erro ao alternar status:', err);
-    return serverError(res, 'Erro ao alternar status');
+    console.error('Stack:', err.stack);
+    return serverError(res, 'Erro ao alternar status: ' + err.message);
   }
 });
 

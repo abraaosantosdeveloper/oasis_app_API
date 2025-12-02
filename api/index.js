@@ -24,7 +24,7 @@ const insightsRoutes = require('./routes/insights');
 const app = express();
 
 // ============================================
-// CORS
+// CORS - Configuração Simplificada
 // ============================================
 const allowedOrigins = [
   'https://abraaosantosdeveloper.github.io',  
@@ -33,58 +33,52 @@ const allowedOrigins = [
   'http://127.0.0.1:5500'
 ];
 
+// Configuração CORS simplificada e eficaz
 app.use(cors({
   origin: function(origin, callback) {
-    // Permite requisições sem origin (Postman, mobile apps)
+    // Permite requisições sem origin (Postman, mobile apps, testes)
     if (!origin) return callback(null, true);
     
-    // Permite qualquer subdomínio .github.io (recomendado)
+    // Permite qualquer domínio .github.io
     if (origin.includes('github.io')) {
       return callback(null, true);
     }
     
-    // Permite origens específicas
+    // Permite origens específicas da lista
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    console.log('⚠️ CORS: Origem não permitida:', origin);
-    callback(null, true); // Permite mesmo assim (remova se quiser bloquear)
+    // Se quiser ser mais restritivo, descomente a linha abaixo:
+    // return callback(new Error('Not allowed by CORS'));
+    
+    // Por enquanto, permite todas as origens
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Content-Length', 'X-Request-Id'],
-  maxAge: 86400, // Cache preflight por 24h
-  optionsSuccessStatus: 204 // Status correto para OPTIONS
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
-// Middleware adicional para garantir headers
+// Middleware para parsing de JSON e URL-encoded
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Headers adicionais de segurança e compatibilidade
 app.use((req, res, next) => {
-  const origin = req.headers.origin;
+  // Remove headers conflitantes que o Vercel pode adicionar
+  res.removeHeader('X-Powered-By');
   
-  // Se for github.io, permite automaticamente
-  if (origin && origin.includes('github.io')) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  } else if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  }
-  
-  // Responde OPTIONS imediatamente
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end(); // ✅ Status 204 (não 200)
-  }
+  // Adiciona headers de segurança
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
   
   next();
 });
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Log de requisições (desenvolvimento)
 if (process.env.NODE_ENV !== 'production') {

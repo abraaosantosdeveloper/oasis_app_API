@@ -16,6 +16,7 @@ const habitsRoutes = require('./routes/habits');
 const categoriesRoutes = require('./routes/categories');
 const journalRoutes = require('./routes/journal');
 const keepAliveRoutes = require('./routes/keep-alive');
+const insightsRoutes = require('./routes/insights');
 
 // ============================================
 // Configurar Express
@@ -128,6 +129,7 @@ app.use('/api/habits', habitsRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/keep-alive', keepAliveRoutes);
+app.use('/api/insights', insightsRoutes);
 
 // ============================================
 // Tratamento de Erros 404

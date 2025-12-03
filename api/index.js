@@ -16,7 +16,6 @@ const habitsRoutes = require('./routes/habits');
 const categoriesRoutes = require('./routes/categories');
 const journalRoutes = require('./routes/journal');
 const keepAliveRoutes = require('./routes/keep-alive');
-const insightsRoutes = require('./routes/insights');
 
 // ============================================
 // Configurar Express
@@ -24,7 +23,7 @@ const insightsRoutes = require('./routes/insights');
 const app = express();
 
 // ============================================
-// CORS - Configuração Simplificada
+// CORS
 // ============================================
 const allowedOrigins = [
   'https://abraaosantosdeveloper.github.io',  
@@ -33,52 +32,58 @@ const allowedOrigins = [
   'http://127.0.0.1:5500'
 ];
 
-// Configuração CORS simplificada e eficaz
 app.use(cors({
   origin: function(origin, callback) {
-    // Permite requisições sem origin (Postman, mobile apps, testes)
+    // Permite requisições sem origin (Postman, mobile apps)
     if (!origin) return callback(null, true);
     
-    // Permite qualquer domínio .github.io
+    // Permite qualquer subdomínio .github.io (recomendado)
     if (origin.includes('github.io')) {
       return callback(null, true);
     }
     
-    // Permite origens específicas da lista
+    // Permite origens específicas
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
-    // Se quiser ser mais restritivo, descomente a linha abaixo:
-    // return callback(new Error('Not allowed by CORS'));
-    
-    // Por enquanto, permite todas as origens
-    callback(null, true);
+    console.log('⚠️ CORS: Origem não permitida:', origin);
+    callback(null, true); // Permite mesmo assim (remova se quiser bloquear)
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   exposedHeaders: ['Content-Length', 'X-Request-Id'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
+  maxAge: 86400, // Cache preflight por 24h
+  optionsSuccessStatus: 204 // Status correto para OPTIONS
 }));
 
-// Middleware para parsing de JSON e URL-encoded
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Headers adicionais de segurança e compatibilidade
+// Middleware adicional para garantir headers
 app.use((req, res, next) => {
-  // Remove headers conflitantes que o Vercel pode adicionar
-  res.removeHeader('X-Powered-By');
+  const origin = req.headers.origin;
   
-  // Adiciona headers de segurança
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Se for github.io, permite automaticamente
+  if (origin && origin.includes('github.io')) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  } else if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  }
+  
+  // Responde OPTIONS imediatamente
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end(); // ✅ Status 204 (não 200)
+  }
   
   next();
 });
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Log de requisições (desenvolvimento)
 if (process.env.NODE_ENV !== 'production') {
@@ -123,7 +128,6 @@ app.use('/api/habits', habitsRoutes);
 app.use('/api/categories', categoriesRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/keep-alive', keepAliveRoutes);
-app.use('/api/insights', insightsRoutes);
 
 // ============================================
 // Tratamento de Erros 404

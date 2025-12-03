@@ -26,6 +26,11 @@ function isValidDate(dateString) {
  * Valida signup
  */
 function validateSignup(req, res, next) {
+  // Pula validação para requisições OPTIONS (preflight)
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const { nome, email, senha } = req.body;
 
   if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {
@@ -64,6 +69,11 @@ function validateSignup(req, res, next) {
  * Valida login
  */
 function validateLogin(req, res, next) {
+  // Pula validação para requisições OPTIONS (preflight)
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const { email, senha } = req.body;
 
   if (!email || !isValidEmail(email)) {
@@ -87,6 +97,11 @@ function validateLogin(req, res, next) {
  * Valida criação/atualização de hábito
  */
 function validateHabit(req, res, next) {
+  // Pula validação para requisições OPTIONS (preflight)
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const { titulo, categoria, repetir, tipo_repeticao } = req.body;
 
   if (!titulo || typeof titulo !== 'string' || titulo.trim().length === 0) {
@@ -118,6 +133,11 @@ function validateHabit(req, res, next) {
  * Valida entrada de diário
  */
 function validateJournal(req, res, next) {
+  // Pula validação para requisições OPTIONS (preflight)
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const { conteudo, data } = req.body;
 
   if (!conteudo || typeof conteudo !== 'string' || conteudo.trim().length === 0) {
@@ -141,6 +161,11 @@ function validateJournal(req, res, next) {
  * Valida categoria
  */
 function validateCategory(req, res, next) {
+  // Pula validação para requisições OPTIONS (preflight)
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const { nome, emoji } = req.body;
 
   if (!nome || typeof nome !== 'string' || nome.trim().length === 0) {

@@ -15,27 +15,33 @@ function getPool() {
     const databaseUrl = process.env.DATABASE_URL;
     
     if (!databaseUrl) {
+      console.warn('⚠️  DATABASE_URL não configurada no ambiente');
       throw new Error('DATABASE_URL não configurada no ambiente');
     }
 
-    // Parse da URL do Railway: mysql://user:pass@host:port/database
-    const dbUrl = new URL(databaseUrl);
-    
-    pool = mysql.createPool({
-      host: dbUrl.hostname,
-      port: parseInt(dbUrl.port) || 3306,
-      user: dbUrl.username,
-      password: dbUrl.password,
-      database: dbUrl.pathname.substring(1), // Remove a barra inicial
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-      enableKeepAlive: true,
-      keepAliveInitialDelay: 0,
-      charset: 'utf8mb4'
-    });
+    try {
+      // Parse da URL do Railway: mysql://user:pass@host:port/database
+      const dbUrl = new URL(databaseUrl);
+      
+      pool = mysql.createPool({
+        host: dbUrl.hostname,
+        port: parseInt(dbUrl.port) || 3306,
+        user: dbUrl.username,
+        password: dbUrl.password,
+        database: dbUrl.pathname.substring(1), // Remove a barra inicial
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        enableKeepAlive: true,
+        keepAliveInitialDelay: 0,
+        charset: 'utf8mb4'
+      });
 
-    console.log('✅ Pool de conexões MySQL criado');
+      console.log('✅ Pool de conexões MySQL criado');
+    } catch (error) {
+      console.error('❌ Erro ao criar pool MySQL:', error.message);
+      throw error;
+    }
   }
 
   return pool;
